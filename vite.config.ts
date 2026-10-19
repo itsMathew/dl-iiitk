@@ -22,4 +22,18 @@ export default defineConfig({
       },
     },
   },
+  preview: {
+    port: 4173,
+    proxy: {
+      '/api': {
+        target: 'https://attendance.iiitkottayam.ac.in',
+        changeOrigin: true,
+        secure: false,
+        headers: {
+          'Origin': 'https://attendance.iiitkottayam.ac.in',
+          'Referer': 'https://attendance.iiitkottayam.ac.in/',
+        },
+      },
+    },
+  },
 });

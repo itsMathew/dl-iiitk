@@ -1,10 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Lock, 
   Mail, 
   ArrowRight, 
   AlertCircle, 
-  Key
+  Settings, 
+  Globe, 
+  Check, 
+  Server
 } from 'lucide-react';
 import { loginToPortal, syncFullStudentData } from '../services/api';
 import { CourseAttendance, StudentProfile } from '../types/attendance';
@@ -17,10 +20,29 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showTokenInput, setShowTokenInput] = useState(false);
+  const [showProxySettings, setShowProxySettings] = useState(false);
+  const [proxyMode, setProxyMode] = useState<string>('relative');
+  const [customProxyUrl, setCustomProxyUrl] = useState<string>('');
   const [manualToken, setManualToken] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [progressMsg, setProgressMsg] = useState('');
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const savedMode = localStorage.getItem('dl_proxy_mode') || 'relative';
+    const savedCustom = localStorage.getItem('dl_custom_proxy') || '';
+    setProxyMode(savedMode);
+    setCustomProxyUrl(savedCustom);
+  }, []);
+
+  const handleSaveProxyMode = (mode: string, customUrl?: string) => {
+    setProxyMode(mode);
+    localStorage.setItem('dl_proxy_mode', mode);
+    if (customUrl !== undefined) {
+      setCustomProxyUrl(customUrl);
+      localStorage.setItem('dl_custom_proxy', customUrl);
+    }
+  };
 
   const handleLogin = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -82,7 +104,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess }) => {
     <div className="min-h-screen bg-black text-white flex flex-col justify-center items-center px-4 py-12">
       <div className="w-full max-w-md">
         {/* Header Branding */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-6">
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-white text-black font-black text-lg tracking-tighter mb-3">
             DL
           </div>
@@ -97,10 +119,23 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess }) => {
         {/* Card Container */}
         <div className="mono-panel rounded-2xl p-6 sm:p-8 border border-zinc-800">
           {error && (
-            <div className="mb-5 p-3 rounded-lg border border-white bg-zinc-950 flex items-start gap-2.5 text-xs text-zinc-200">
-              <AlertCircle className="w-4 h-4 text-white shrink-0 mt-0.5" />
-              <div className="flex-1">
+            <div className="mb-5 p-3 rounded-lg border border-red-500/80 bg-red-950/30 flex items-start gap-2.5 text-xs text-zinc-200">
+              <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+              <div className="flex-1 space-y-1.5">
                 <p className="font-semibold text-white">{error}</p>
+                {proxyMode === 'relative' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleSaveProxyMode('corsproxy');
+                      setError(null);
+                    }}
+                    className="inline-flex items-center gap-1 text-[11px] font-mono underline text-red-400 hover:text-white"
+                  >
+                    <span>Switch to Public CORS Gateway & Retry</span>
+                    <ArrowRight className="w-3 h-3" />
+                  </button>
+                )}
               </div>
             </div>
           )}
@@ -166,15 +201,75 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess }) => {
                 </button>
               </div>
 
-              <div className="text-center pt-3 border-t border-zinc-900 mt-4">
+              <div className="flex items-center justify-between pt-3 border-t border-zinc-900 mt-4 text-[11px] font-mono text-zinc-500">
+                <button
+                  type="button"
+                  onClick={() => setShowProxySettings(!showProxySettings)}
+                  className="hover:text-zinc-300 flex items-center gap-1 transition"
+                >
+                  <Server className="w-3 h-3" />
+                  <span>Proxy: {proxyMode === 'relative' ? 'Platform /api' : proxyMode === 'corsproxy' ? 'CORS Gateway' : 'Custom'}</span>
+                </button>
+
                 <button
                   type="button"
                   onClick={() => setShowTokenInput(true)}
-                  className="text-[11px] font-mono text-zinc-500 hover:text-zinc-300 transition"
+                  className="hover:text-zinc-300 transition"
                 >
-                  Paste JWT Bearer Token directly →
+                  Paste JWT Token →
                 </button>
               </div>
+
+              {/* Proxy Settings Drawer */}
+              {showProxySettings && (
+                <div className="p-3 rounded-lg bg-zinc-950 border border-zinc-800 space-y-2.5 animate-in fade-in text-xs font-mono">
+                  <div className="text-[11px] font-bold uppercase text-zinc-400">
+                    Production CORS Proxy Setup:
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="flex items-center gap-2 cursor-pointer text-[11px]">
+                      <input
+                        type="radio"
+                        name="proxy"
+                        checked={proxyMode === 'relative'}
+                        onChange={() => handleSaveProxyMode('relative')}
+                      />
+                      <span><strong>Host Proxy /api</strong> (Vercel, Netlify, Cloudflare, Vite)</span>
+                    </label>
+
+                    <label className="flex items-center gap-2 cursor-pointer text-[11px]">
+                      <input
+                        type="radio"
+                        name="proxy"
+                        checked={proxyMode === 'corsproxy'}
+                        onChange={() => handleSaveProxyMode('corsproxy')}
+                      />
+                      <span><strong>CORS Gateway</strong> (corsproxy.io for static hosts)</span>
+                    </label>
+
+                    <label className="flex items-center gap-2 cursor-pointer text-[11px]">
+                      <input
+                        type="radio"
+                        name="proxy"
+                        checked={proxyMode === 'custom'}
+                        onChange={() => handleSaveProxyMode('custom')}
+                      />
+                      <span><strong>Custom Proxy URL</strong></span>
+                    </label>
+                  </div>
+
+                  {proxyMode === 'custom' && (
+                    <input
+                      type="text"
+                      placeholder="https://my-proxy.workers.dev"
+                      value={customProxyUrl}
+                      onChange={(e) => handleSaveProxyMode('custom', e.target.value)}
+                      className="w-full p-2 bg-black border border-zinc-800 rounded text-[11px] text-white focus:outline-none focus:border-white"
+                    />
+                  )}
+                </div>
+              )}
             </form>
           ) : (
             <form onSubmit={handleManualTokenSubmit} className="space-y-4">

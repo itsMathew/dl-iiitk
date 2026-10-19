@@ -64,14 +64,39 @@ export interface CourseSessionsResponse {
   }>;
 }
 
-export const BASE_URL = 'https://attendance.iiitkottayam.ac.in/api';
+/**
+ * Builds API endpoint URL supporting:
+ * - 'relative' (default): Uses /api which is proxied by Vercel (vercel.json), Netlify (netlify.toml), Cloudflare (_redirects), or Vite dev/preview server.
+ * - 'corsproxy': Uses public gateway (corsproxy.io) for static deployments without backend rewrites (e.g. GitHub Pages).
+ * - 'custom': User-configured custom proxy URL.
+ */
+export function buildApiUrl(endpoint: string): string {
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  const proxyMode = localStorage.getItem('dl_proxy_mode') || 'relative';
+
+  if (proxyMode === 'corsproxy') {
+    const targetUrl = `https://attendance.iiitkottayam.ac.in/api${cleanEndpoint}`;
+    return `https://corsproxy.io/?url=${encodeURIComponent(targetUrl)}`;
+  }
+
+  if (proxyMode === 'custom') {
+    const customUrl = localStorage.getItem('dl_custom_proxy');
+    if (customUrl) {
+      return `${customUrl.trim().replace(/\/$/, '')}${cleanEndpoint}`;
+    }
+  }
+
+  // Default: relative /api
+  return `/api${cleanEndpoint}`;
+}
 
 /**
  * Authenticate against the IIIT Kottayam portal
  */
 export async function loginToPortal(email: string, password: string): Promise<LoginResponse> {
+  const url = buildApiUrl('/auth/login');
   try {
-    const res = await fetch(`${BASE_URL}/auth/login`, {
+    const res = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -88,7 +113,7 @@ export async function loginToPortal(email: string, password: string): Promise<Lo
         message = jsonErr.message || jsonErr.detail || message;
       } catch {
         if (res.status === 401) message = 'Invalid email or password.';
-        else if (res.status === 404) message = 'Authentication endpoint unreachable.';
+        else if (res.status === 404) message = 'Authentication endpoint unreachable (404). Check proxy configuration.';
       }
       throw new Error(message);
     }
@@ -101,7 +126,7 @@ export async function loginToPortal(email: string, password: string): Promise<Lo
   } catch (error: any) {
     if (error.name === 'TypeError' && error.message.includes('fetch')) {
       throw new Error(
-        'Network error reaching the portal. Ensure you have network connectivity to the attendance server.'
+        'CORS / Network error reaching attendance portal. Ensure your deployment proxy (Vercel / Netlify / Cloudflare / Vite) is active, or toggle the CORS Gateway in Proxy Settings.'
       );
     }
     throw error;
@@ -112,7 +137,8 @@ export async function loginToPortal(email: string, password: string): Promise<Lo
  * Fetch student overview attendance
  */
 export async function fetchAttendanceOverview(token: string): Promise<AttendanceRawResponse> {
-  const res = await fetch(`${BASE_URL}/students/me/attendance`, {
+  const url = buildApiUrl('/students/me/attendance');
+  const res = await fetch(url, {
     headers: {
       'Authorization': `Bearer ${token}`,
       'Accept': 'application/json',
@@ -130,7 +156,8 @@ export async function fetchAttendanceOverview(token: string): Promise<Attendance
  * Fetch sessions list for a specific course
  */
 export async function fetchCourseSessions(token: string, courseId: string): Promise<CourseSessionsResponse> {
-  const res = await fetch(`${BASE_URL}/students/me/courses/${courseId}/sessions`, {
+  const url = buildApiUrl(`/students/me/courses/${courseId}/sessions`);
+  const res = await fetch(url, {
     headers: {
       'Authorization': `Bearer ${token}`,
       'Accept': 'application/json',
