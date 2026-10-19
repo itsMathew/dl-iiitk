@@ -2,7 +2,7 @@ export type PolicyMode = 'raw' | 'scenario1' | 'scenario2';
 
 export interface Session {
   id: string;
-  date: string; // ISO or parseable date string (e.g., "2026-10-15T00:00:00.000Z")
+  date: string; // ISO or parseable date string
   timing: string; // e.g., "16:30 - 17:30"
   startTime?: string;
   endTime?: string;
@@ -50,10 +50,9 @@ export interface CourseAnalysis {
   absent: number;
   percentage: number;
   rawPercentage: number;
-  scenario1Percentage: number;
-  scenario2Percentage: number;
-  preAugHeld: number;
-  preAugAbsent: number;
+  adjustedPercentage: number;
+  internshipSessions: number;
+  internshipAbsent: number;
   status: 'critical' | 'warning' | 'healthy';
   dlNeeded: number;
   classesToAttend: number;
@@ -62,18 +61,12 @@ export interface CourseAnalysis {
 }
 
 export interface OverallSummary {
-  totalAttended: number;
-  totalCounted: number;
-  totalHeld: number;
-  totalDL: number;
-  overallPercentage: number;
   criticalCoursesCount: number;
   warningCoursesCount: number;
   healthyCoursesCount: number;
   totalDLNeeded: number;
   totalSafeBunks: number;
-  baselinePercentage: number;
-  scenarioGain: number;
+  totalInternshipLeavesGranted: number;
 }
 
 export interface SimulationParams {

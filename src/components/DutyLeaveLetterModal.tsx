@@ -4,8 +4,7 @@ import {
   Copy, 
   Check, 
   Printer, 
-  FileText, 
-  Sparkles 
+  FileText 
 } from 'lucide-react';
 import { CourseAnalysis, StudentProfile } from '../types/attendance';
 
@@ -21,10 +20,9 @@ export const DutyLeaveLetterModal: React.FC<DutyLeaveLetterModalProps> = ({
   onClose,
 }) => {
   const [copied, setCopied] = useState(false);
-  const [reason, setReason] = useState('College Approved Hackathon / Technical Activity / Medical');
-  const [eventDate, setEventDate] = useState('July 22, 2026 to July 30, 2026');
+  const [reason, setReason] = useState('Approved Internship / College Hackathon');
+  const [eventDate, setEventDate] = useState('July 2026 to August 2026');
 
-  // Filter courses that need DLs
   const needyCourses = courses.filter((c) => c.dlNeeded > 0);
 
   const letterContent = `To,
@@ -35,13 +33,13 @@ Valavoor, Kerala - 686635.
 
 Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
 
-Subject: Application for Granting Duty Leaves (DL) for Academic / Activity Absences
+Subject: Application for Granting Duty Leaves (DL) for Academic / Internship Absences
 
 Respected Sir/Madam,
 
 I am ${profile.name}, a student of ${profile.branch} (Semester ${profile.semester}), bearing Roll Number ${profile.rollNo}.
 
-I am writing this application to kindly request approval and crediting of Duty Leaves (DL) in the college attendance portal. Due to official participation in "${reason}" during the period ${eventDate}, I was unable to attend certain scheduled lecture and practical sessions.
+I am writing this application to kindly request approval and crediting of Duty Leaves (DL) in the college attendance portal. Due to official participation in "${reason}" during the period ${eventDate}, I was unable to attend certain scheduled sessions.
 
 As per college attendance policy, approved Duty Leaves are subtracted from the denominator (Counted Sessions = Held Sessions - Duty Leaves) to normalize attendance percentages.
 
@@ -49,8 +47,7 @@ Details of courses requiring Duty Leave regularization to meet the mandatory 80%
 
 ${needyCourses.length > 0 ? needyCourses.map((c, i) => `${i + 1}. ${c.courseCode} - ${c.courseName}:
    • Current Attendance: ${c.percentage}% (${c.attended}/${c.counted} sessions)
-   • Duty Leaves Requested: ${c.dlNeeded} session(s)
-   • Pre-August Sessions Affected: ${c.preAugHeld} held (${c.preAugAbsent} absent)`).join('\n\n') : 'All courses currently meet the attendance target. This is a general regularization request.'}
+   • Duty Leaves Requested: ${c.dlNeeded} session(s)`).join('\n\n') : 'All courses currently meet the attendance target. This is a general regularization request.'}
 
 I request you to kindly sanction the duty leave approval in the portal so that my attendance record is updated accordingly.
 
@@ -79,83 +76,81 @@ IIIT Kottayam`;
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
+    <div className="fixed inset-0 z-50 overflow-hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
       <div 
-        className="w-full max-w-2xl bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden"
+        className="w-full max-w-2xl bg-black border border-zinc-800 rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="p-5 border-b border-slate-800 flex items-center justify-between bg-slate-950/50">
+        <div className="p-4 border-b border-zinc-800 flex items-center justify-between bg-zinc-950">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-indigo-500/15 text-indigo-400">
-              <FileText className="w-5 h-5" />
+            <div className="p-1.5 rounded border border-zinc-700 bg-zinc-900 text-white">
+              <FileText className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-white">Duty Leave Formal Application Letter</h2>
-              <p className="text-xs text-slate-400">Auto-filled formal draft for Faculty Advisor / HoD approval</p>
+              <h2 className="text-sm font-bold text-white uppercase font-mono">Duty Leave Application Letter</h2>
+              <p className="text-[11px] text-zinc-400 font-mono">Formal draft for Faculty Advisor / HoD approval</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+            className="p-1.5 rounded border border-zinc-800 text-zinc-400 hover:text-white transition"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="p-5 space-y-4 overflow-y-auto">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="p-4 space-y-3 overflow-y-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 font-mono text-xs">
             <div>
-              <label className="block text-[11px] font-medium text-slate-400 mb-1">
-                Reason / Event Name:
+              <label className="block text-zinc-400 mb-1">
+                Reason / Activity:
               </label>
               <input
                 type="text"
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
-                className="w-full p-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200"
+                className="w-full p-2 bg-zinc-950 border border-zinc-800 rounded text-xs text-white focus:outline-none focus:border-white"
               />
             </div>
             <div>
-              <label className="block text-[11px] font-medium text-slate-400 mb-1">
-                Period / Date Range:
+              <label className="block text-zinc-400 mb-1">
+                Date Range / Period:
               </label>
               <input
                 type="text"
                 value={eventDate}
                 onChange={(e) => setEventDate(e.target.value)}
-                className="w-full p-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200"
+                className="w-full p-2 bg-zinc-950 border border-zinc-800 rounded text-xs text-white focus:outline-none focus:border-white"
               />
             </div>
           </div>
 
-          <div className="relative">
-            <textarea
-              readOnly
-              rows={14}
-              value={letterContent}
-              className="w-full p-4 bg-slate-950 border border-slate-800 rounded-2xl text-xs font-mono text-slate-300 leading-relaxed focus:outline-none"
-            />
-          </div>
+          <textarea
+            readOnly
+            rows={13}
+            value={letterContent}
+            className="w-full p-3 bg-zinc-950 border border-zinc-800 rounded-lg text-xs font-mono text-zinc-300 leading-relaxed focus:outline-none"
+          />
         </div>
 
-        <div className="p-4 border-t border-slate-800 bg-slate-950/60 flex items-center justify-between">
-          <span className="text-xs text-slate-500">
-            Includes {needyCourses.length} deficit course breakdown
+        <div className="p-3 border-t border-zinc-800 bg-zinc-950 flex items-center justify-between text-xs font-mono">
+          <span className="text-zinc-500">
+            {needyCourses.length} deficit courses
           </span>
           <div className="flex items-center gap-2">
             <button
               onClick={handlePrint}
-              className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium flex items-center gap-1.5 transition"
+              className="px-3 py-1.5 rounded border border-zinc-800 bg-zinc-900 hover:bg-zinc-850 text-white flex items-center gap-1.5 transition"
             >
               <Printer className="w-3.5 h-3.5" />
-              <span>Print Draft</span>
+              <span>Print</span>
             </button>
             <button
               onClick={handleCopy}
-              className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold flex items-center gap-1.5 shadow-md shadow-indigo-600/30 transition"
+              className="px-3.5 py-1.5 rounded bg-white hover:bg-zinc-200 text-black font-bold flex items-center gap-1.5 transition"
             >
-              {copied ? <Check className="w-3.5 h-3.5 text-emerald-300" /> : <Copy className="w-3.5 h-3.5" />}
-              <span>{copied ? 'Copied to Clipboard!' : 'Copy Letter'}</span>
+              {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+              <span>{copied ? 'Copied' : 'Copy Letter'}</span>
             </button>
           </div>
         </div>

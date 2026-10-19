@@ -3,16 +3,11 @@ import {
   LayoutGrid, 
   Table as TableIcon, 
   Search, 
-  Filter, 
-  RotateCcw, 
-  Sparkles, 
   BookOpen, 
-  AlertTriangle,
-  Info
+  AlertTriangle
 } from 'lucide-react';
-import confetti from 'canvas-confetti';
 import { CourseAttendance, CourseAnalysis, PolicyMode, StudentProfile } from './types/attendance';
-import { analyzeCourse, calculateOverallSummary } from './utils/calculations';
+import { analyzeCourse, calculateOverallSummary, DEFAULT_CUTOFF } from './utils/calculations';
 import { syncFullStudentData } from './services/api';
 import { LoginPage } from './components/LoginPage';
 import { Navbar } from './components/Navbar';
@@ -30,6 +25,10 @@ export const App: React.FC = () => {
   const [profile, setProfile] = useState<StudentProfile | null>(null);
   const [courses, setCourses] = useState<CourseAttendance[]>([]);
 
+  // Internship Leaves Exemption Settings
+  const [internshipEnabled, setInternshipEnabled] = useState<boolean>(true);
+  const [internshipCutoffDate, setInternshipCutoffDate] = useState<string>(DEFAULT_CUTOFF);
+
   // Policy & Target Settings
   const [policy, setPolicy] = useState<PolicyMode>('scenario2');
   const [targetAttendance, setTargetAttendance] = useState<number>(80);
@@ -46,26 +45,13 @@ export const App: React.FC = () => {
   const [showScraperModal, setShowScraperModal] = useState<boolean>(false);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
 
-  // When successfully logged in
   const handleLoginSuccess = (data: { profile: StudentProfile; courses: CourseAttendance[]; token: string }) => {
     setProfile(data.profile);
     setCourses(data.courses);
     setToken(data.token);
     setIsAuthenticated(true);
-
-    // Trigger welcoming celebratory confetti
-    try {
-      confetti({
-        particleCount: 60,
-        spread: 60,
-        origin: { y: 0.6 },
-      });
-    } catch {
-      // ignore
-    }
   };
 
-  // Re-sync attendance with active token
   const handleRefresh = async () => {
     if (!token) return;
     setIsRefreshing(true);
@@ -88,17 +74,25 @@ export const App: React.FC = () => {
     setSelectedCourseForDrawer(null);
   };
 
-  // Compute analyzed courses based on active policy & target
+  // Compute analyzed courses based on internship toggle & cutoff date
   const analyzedCourses = useMemo(() => {
-    return courses.map((c) => analyzeCourse(c, policy, targetAttendance));
-  }, [courses, policy, targetAttendance]);
+    return courses.map((c) =>
+      analyzeCourse(c, internshipEnabled, internshipCutoffDate, policy, targetAttendance)
+    );
+  }, [courses, internshipEnabled, internshipCutoffDate, policy, targetAttendance]);
 
-  // Overall Global Summary
-  const overallSummary = useMemo(() => {
-    return calculateOverallSummary(courses, policy, targetAttendance);
-  }, [courses, policy, targetAttendance]);
+  // Overall Global Summary (no overall attendance)
+  const summary = useMemo(() => {
+    return calculateOverallSummary(
+      courses,
+      internshipEnabled,
+      internshipCutoffDate,
+      policy,
+      targetAttendance
+    );
+  }, [courses, internshipEnabled, internshipCutoffDate, policy, targetAttendance]);
 
-  // Filtered courses for display
+  // Filtered courses
   const filteredCourses = useMemo(() => {
     return analyzedCourses.filter((course) => {
       const matchesSearch =
@@ -115,7 +109,6 @@ export const App: React.FC = () => {
     });
   }, [analyzedCourses, searchQuery, selectedCategory, filterCriticalOnly, targetAttendance]);
 
-  // Keep drawer updated if active course changes
   useEffect(() => {
     if (selectedCourseForDrawer) {
       const updated = analyzedCourses.find((c) => c.courseId === selectedCourseForDrawer.courseId);
@@ -123,16 +116,19 @@ export const App: React.FC = () => {
     }
   }, [analyzedCourses]);
 
-  // If not authenticated, render Login Page
   if (!isAuthenticated || !profile) {
     return <LoginPage onSuccess={handleLoginSuccess} />;
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col antialiased">
-      {/* Sticky Navigation Bar */}
+    <div className="min-h-screen bg-black text-white flex flex-col antialiased">
+      {/* Black & White Header with Internship Leaves Toggle & Cutoff Date */}
       <Navbar
         profile={profile}
+        internshipEnabled={internshipEnabled}
+        onToggleInternship={setInternshipEnabled}
+        internshipCutoffDate={internshipCutoffDate}
+        onCutoffDateChange={setInternshipCutoffDate}
         policy={policy}
         onPolicyChange={setPolicy}
         targetAttendance={targetAttendance}
@@ -144,66 +140,64 @@ export const App: React.FC = () => {
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-        {/* Global Attendance Summary Cards */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-5">
+        {/* Course Summary Metrics (No overall attendance) */}
         <GlobalSummary
-          summary={overallSummary}
-          policy={policy}
+          summary={summary}
           targetAttendance={targetAttendance}
+          internshipEnabled={internshipEnabled}
+          internshipCutoffDate={internshipCutoffDate}
         />
 
-        {/* Course Controls Bar: View Toggle, Search, Filter */}
-        <div className="glass-panel rounded-2xl p-4 border border-slate-800/80 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
-          {/* Search Input */}
+        {/* Filter & View Controls */}
+        <div className="mono-panel rounded-xl p-3 border border-zinc-800 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
           <div className="relative flex-1">
-            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-zinc-500">
               <Search className="w-4 h-4" />
             </div>
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by course code, name, or faculty (e.g. IMA311, Soft Computing)..."
-              className="w-full pl-10 pr-4 py-2 bg-slate-900 border border-slate-700/80 rounded-xl text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition"
+              placeholder="Filter course code, name, or faculty (e.g. IMA311, Soft Computing)..."
+              className="w-full pl-9 pr-3 py-1.5 bg-black border border-zinc-800 rounded-lg text-xs font-mono text-white placeholder-zinc-600 focus:outline-none focus:border-white transition"
             />
           </div>
 
-          {/* Category Filter & Critical Toggle */}
           <div className="flex flex-wrap items-center gap-2">
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="py-2 px-3 bg-slate-900 border border-slate-700/80 rounded-xl text-xs text-slate-300 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              className="py-1.5 px-2.5 bg-black border border-zinc-800 rounded-lg text-xs font-mono text-zinc-300 focus:outline-none focus:border-white"
             >
               <option value="all">All Categories</option>
-              <option value="core">Core Subjects</option>
-              <option value="elective">Electives</option>
+              <option value="core">Core</option>
+              <option value="elective">Elective</option>
               <option value="humanities">Humanities</option>
-              <option value="lab">Labs</option>
+              <option value="lab">Lab</option>
             </select>
 
             <button
               type="button"
               onClick={() => setFilterCriticalOnly(!filterCriticalOnly)}
-              className={`py-2 px-3 rounded-xl text-xs font-medium border transition flex items-center gap-1.5 ${
+              className={`py-1.5 px-2.5 rounded-lg text-xs font-mono border transition flex items-center gap-1.5 ${
                 filterCriticalOnly
-                  ? 'bg-rose-500/20 text-rose-300 border-rose-500/40'
-                  : 'bg-slate-900 text-slate-400 border-slate-700/80 hover:text-slate-200'
+                  ? 'bg-white text-black font-bold border-white'
+                  : 'bg-black text-zinc-400 border-zinc-800 hover:text-white'
               }`}
             >
-              <AlertTriangle className="w-3.5 h-3.5 text-rose-400" />
+              <AlertTriangle className="w-3.5 h-3.5" />
               <span>&lt; {targetAttendance}% Only</span>
             </button>
 
-            {/* View Mode Toggle */}
-            <div className="flex items-center p-1 rounded-xl bg-slate-900 border border-slate-800">
+            <div className="flex items-center p-0.5 rounded-lg bg-black border border-zinc-800">
               <button
                 type="button"
                 onClick={() => setViewMode('grid')}
-                className={`p-1.5 rounded-lg text-xs transition ${
+                className={`p-1.5 rounded text-xs transition ${
                   viewMode === 'grid'
-                    ? 'bg-slate-800 text-white shadow-sm'
-                    : 'text-slate-500 hover:text-slate-300'
+                    ? 'bg-zinc-800 text-white'
+                    : 'text-zinc-500 hover:text-zinc-300'
                 }`}
                 title="Grid Cards View"
               >
@@ -212,10 +206,10 @@ export const App: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setViewMode('table')}
-                className={`p-1.5 rounded-lg text-xs transition ${
+                className={`p-1.5 rounded text-xs transition ${
                   viewMode === 'table'
-                    ? 'bg-slate-800 text-white shadow-sm'
-                    : 'text-slate-500 hover:text-slate-300'
+                    ? 'bg-zinc-800 text-white'
+                    : 'text-zinc-500 hover:text-zinc-300'
                 }`}
                 title="Dense Data Table View"
               >
@@ -225,33 +219,30 @@ export const App: React.FC = () => {
           </div>
         </div>
 
-        {/* Courses Display (Grid or Table) */}
+        {/* Courses Display */}
         {filteredCourses.length === 0 ? (
-          <div className="py-16 text-center glass-panel rounded-2xl border border-slate-800 space-y-3">
-            <BookOpen className="w-10 h-10 text-slate-600 mx-auto" />
-            <div className="text-sm font-semibold text-slate-300">No courses match your query</div>
-            <p className="text-xs text-slate-500">
-              Try adjusting your search query or reset the category filters.
-            </p>
+          <div className="py-16 text-center mono-panel rounded-xl border border-zinc-800 space-y-2">
+            <BookOpen className="w-8 h-8 text-zinc-600 mx-auto" />
+            <div className="text-sm font-semibold text-zinc-300 font-mono">No courses match query</div>
             <button
               onClick={() => {
                 setSearchQuery('');
                 setSelectedCategory('all');
                 setFilterCriticalOnly(false);
               }}
-              className="text-xs text-indigo-400 hover:underline"
+              className="text-xs font-mono text-zinc-400 hover:text-white underline"
             >
               Reset Filters
             </button>
           </div>
         ) : viewMode === 'grid' ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
             {filteredCourses.map((course) => (
               <CourseCard
                 key={course.courseId}
                 course={course}
-                policy={policy}
                 targetAttendance={targetAttendance}
+                internshipEnabled={internshipEnabled}
                 onOpenDrawer={(c) => setSelectedCourseForDrawer(c)}
               />
             ))}
@@ -259,18 +250,19 @@ export const App: React.FC = () => {
         ) : (
           <CourseTable
             courses={filteredCourses}
-            policy={policy}
             targetAttendance={targetAttendance}
+            internshipEnabled={internshipEnabled}
             onOpenDrawer={(c) => setSelectedCourseForDrawer(c)}
           />
         )}
       </main>
 
-      {/* Course Detail Drawer Modal */}
+      {/* Course Detail Drawer */}
       <CourseDrawer
         course={selectedCourseForDrawer}
-        policy={policy}
         targetAttendance={targetAttendance}
+        internshipEnabled={internshipEnabled}
+        internshipCutoffDate={internshipCutoffDate}
         onClose={() => setSelectedCourseForDrawer(null)}
       />
 

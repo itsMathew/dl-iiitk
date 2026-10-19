@@ -1,32 +1,29 @@
 import React, { useState } from 'react';
 import { 
-  BookOpen, 
   ChevronRight, 
-  ShieldCheck, 
   ShieldAlert, 
   Coffee, 
-  Sparkles, 
-  Calendar, 
   User, 
   SlidersHorizontal,
   RotateCcw,
   Plus,
-  Minus
+  Minus,
+  Briefcase
 } from 'lucide-react';
-import { CourseAnalysis, PolicyMode, SimulationParams } from '../types/attendance';
+import { CourseAnalysis, SimulationParams } from '../types/attendance';
 import { simulateCourseAttendance } from '../utils/calculations';
 
 interface CourseCardProps {
   course: CourseAnalysis;
-  policy: PolicyMode;
   targetAttendance: number;
+  internshipEnabled: boolean;
   onOpenDrawer: (course: CourseAnalysis) => void;
 }
 
 export const CourseCard: React.FC<CourseCardProps> = ({
   course,
-  policy,
   targetAttendance,
+  internshipEnabled,
   onOpenDrawer,
 }) => {
   const [showSim, setShowSim] = useState(false);
@@ -40,37 +37,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({
   const simResult = simulateCourseAttendance(course, simParams, targetAttendance);
 
   const activePercentage = hasSimulation ? simResult.simulatedPercentage : course.percentage;
-
-  // Determine color scheme based on percentage
-  const getColorClasses = (pct: number) => {
-    if (pct < 75) {
-      return {
-        text: 'text-rose-400',
-        bg: 'bg-rose-500/10',
-        border: 'border-rose-500/30',
-        bar: 'bg-rose-500',
-        glow: 'glow-rose',
-      };
-    }
-    if (pct < targetAttendance) {
-      return {
-        text: 'text-amber-400',
-        bg: 'bg-amber-500/10',
-        border: 'border-amber-500/30',
-        bar: 'bg-amber-500',
-        glow: 'glow-amber',
-      };
-    }
-    return {
-      text: 'text-emerald-400',
-      bg: 'bg-emerald-500/10',
-      border: 'border-emerald-500/30',
-      bar: 'bg-emerald-500',
-      glow: 'glow-emerald',
-    };
-  };
-
-  const colors = getColorClasses(activePercentage);
+  const isBelowTarget = activePercentage < targetAttendance;
 
   const resetSim = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -78,42 +45,42 @@ export const CourseCard: React.FC<CourseCardProps> = ({
   };
 
   return (
-    <div className={`glass-panel rounded-2xl p-5 border border-slate-800/80 hover:border-slate-700/80 transition-all flex flex-col justify-between relative group ${hasSimulation ? 'ring-1 ring-indigo-500/40' : ''}`}>
+    <div className={`mono-card rounded-xl p-5 border transition-all flex flex-col justify-between ${isBelowTarget ? 'border-zinc-700 bg-zinc-950/70' : 'border-zinc-850 bg-black'}`}>
       {/* Top Header */}
       <div>
         <div className="flex items-start justify-between gap-2 mb-2">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <span className="font-mono text-xs font-bold px-2 py-0.5 rounded-md bg-slate-800 border border-slate-700 text-indigo-300">
+              <span className="font-mono text-xs font-bold px-1.5 py-0.5 rounded bg-zinc-900 border border-zinc-700 text-white">
                 {course.courseCode}
               </span>
-              <span className="text-[10px] uppercase font-semibold px-2 py-0.5 rounded-full bg-slate-800/70 text-slate-400">
+              <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded border border-zinc-800 text-zinc-400">
                 {course.category}
               </span>
-              {course.preAugHeld > 0 && policy !== 'raw' && (
-                <span className="text-[10px] px-1.5 py-0.2 rounded bg-indigo-500/15 text-indigo-300 border border-indigo-500/30">
-                  {policy === 'scenario1' ? `+${course.preAugAbsent} Present` : `-${course.preAugHeld} Denom`}
+              {internshipEnabled && course.internshipSessions > 0 && (
+                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-zinc-900 text-zinc-300 border border-zinc-700 flex items-center gap-1">
+                  <Briefcase className="w-2.5 h-2.5" />
+                  -{course.internshipSessions} DL
                 </span>
               )}
             </div>
-            <h3 className="font-semibold text-white text-base tracking-tight leading-snug line-clamp-1 group-hover:text-indigo-200 transition">
+            <h3 className="font-semibold text-white text-sm tracking-tight leading-snug line-clamp-1">
               {course.courseName}
             </h3>
           </div>
 
-          {/* Quick Details Drawer button */}
           <button
             onClick={() => onOpenDrawer(course)}
-            title="Inspect Sessions & Scenarios"
-            className="p-1.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800 hover:border-slate-700 transition shrink-0"
+            title="Inspect Sessions"
+            className="p-1 rounded border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-600 transition shrink-0"
           >
             <ChevronRight className="w-4 h-4" />
           </button>
         </div>
 
         {course.faculty && (
-          <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-3">
-            <User className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+          <div className="flex items-center gap-1.5 text-xs text-zinc-400 mb-3">
+            <User className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
             <span className="truncate">{course.faculty}</span>
           </div>
         )}
@@ -122,29 +89,29 @@ export const CourseCard: React.FC<CourseCardProps> = ({
         <div className="my-4">
           <div className="flex items-baseline justify-between mb-1.5">
             <div className="flex items-baseline gap-2">
-              <span className={`text-2xl font-extrabold font-mono tracking-tight ${colors.text}`}>
+              <span className="text-2xl font-extrabold font-mono tracking-tight text-white">
                 {activePercentage.toFixed(2)}%
               </span>
               {hasSimulation && (
-                <span className="text-xs font-mono font-medium text-slate-400">
+                <span className="text-xs font-mono text-zinc-400">
                   ({simResult.deltaPercentage >= 0 ? `+${simResult.deltaPercentage}%` : `${simResult.deltaPercentage}%`})
                 </span>
               )}
             </div>
-            <span className="text-xs font-medium text-slate-400 font-mono">
-              {hasSimulation ? simResult.simulatedAttended : course.attended} / {hasSimulation ? simResult.simulatedCounted : course.counted} counted
+            <span className="text-xs font-mono text-zinc-400">
+              {hasSimulation ? simResult.simulatedAttended : course.attended} / {hasSimulation ? simResult.simulatedCounted : course.counted}
             </span>
           </div>
 
-          {/* Progress Bar with 80% Target Marker */}
-          <div className="relative w-full bg-slate-850 rounded-full h-2.5 overflow-hidden">
+          {/* Progress Bar in B&W */}
+          <div className="relative w-full bg-zinc-900 border border-zinc-800 rounded-full h-2 overflow-hidden">
             <div
-              className={`h-full rounded-full transition-all duration-300 ${colors.bar}`}
+              className="h-full rounded-full bg-white transition-all duration-300"
               style={{ width: `${Math.min(100, activePercentage)}%` }}
             />
             {/* Visual target benchmark line */}
             <div
-              className="absolute top-0 bottom-0 w-0.5 bg-white/70 z-10"
+              className="absolute top-0 bottom-0 w-0.5 bg-zinc-400 z-10"
               style={{ left: `${targetAttendance}%` }}
               title={`Target ${targetAttendance}%`}
             />
@@ -155,17 +122,17 @@ export const CourseCard: React.FC<CourseCardProps> = ({
         <div className="flex flex-wrap items-center gap-2 mb-4">
           {activePercentage < targetAttendance ? (
             <>
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-rose-500/10 border border-rose-500/25 text-rose-300 text-xs font-semibold">
-                <ShieldAlert className="w-3.5 h-3.5 text-rose-400" />
+              <div className="flex items-center gap-1.5 px-2 py-0.5 rounded border border-white bg-zinc-950 text-white text-xs font-mono font-bold">
+                <ShieldAlert className="w-3.5 h-3.5 text-white" />
                 <span>Needs {hasSimulation ? simResult.newDLNeeded : course.dlNeeded} DL{ (hasSimulation ? simResult.newDLNeeded : course.dlNeeded) !== 1 ? 's' : '' }</span>
               </div>
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/25 text-amber-300 text-xs">
-                <span>Attend next {course.classesToAttend} class{course.classesToAttend !== 1 ? 'es' : ''}</span>
+              <div className="flex items-center gap-1.5 px-2 py-0.5 rounded border border-zinc-800 text-zinc-400 text-xs font-mono">
+                <span>Attend next {course.classesToAttend}</span>
               </div>
             </>
           ) : (
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/25 text-emerald-300 text-xs font-semibold">
-              <Coffee className="w-3.5 h-3.5 text-emerald-400" />
+            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded border border-zinc-700 bg-zinc-900 text-zinc-200 text-xs font-mono font-semibold">
+              <Coffee className="w-3.5 h-3.5 text-zinc-400" />
               <span>Safe to skip {hasSimulation ? simResult.newSafeBunks : course.safeBunks} class{ (hasSimulation ? simResult.newSafeBunks : course.safeBunks) !== 1 ? 'es' : '' }</span>
             </div>
           )}
@@ -173,23 +140,22 @@ export const CourseCard: React.FC<CourseCardProps> = ({
       </div>
 
       {/* Bottom Section: What-If Simulator & Timeline Trigger */}
-      <div className="border-t border-slate-800/80 pt-3">
-        {/* Toggle What-If Simulation Accordion */}
+      <div className="border-t border-zinc-800 pt-3">
         <div className="flex items-center justify-between">
           <button
             type="button"
             onClick={() => setShowSim(!showSim)}
-            className="text-xs font-medium text-slate-400 hover:text-slate-200 flex items-center gap-1.5 transition"
+            className="text-xs font-mono text-zinc-400 hover:text-white flex items-center gap-1.5 transition"
           >
-            <SlidersHorizontal className="w-3.5 h-3.5 text-indigo-400" />
-            <span>{showSim ? 'Hide Simulator' : 'What-If Simulation'}</span>
+            <SlidersHorizontal className="w-3.5 h-3.5" />
+            <span>{showSim ? 'Close Sim' : 'What-If Sim'}</span>
           </button>
 
           {hasSimulation && (
             <button
               type="button"
               onClick={resetSim}
-              className="text-[11px] text-slate-400 hover:text-rose-400 flex items-center gap-1 transition"
+              className="text-[11px] text-zinc-500 hover:text-white flex items-center gap-1 transition"
             >
               <RotateCcw className="w-3 h-3" />
               <span>Reset</span>
@@ -199,36 +165,36 @@ export const CourseCard: React.FC<CourseCardProps> = ({
           <button
             type="button"
             onClick={() => onOpenDrawer(course)}
-            className="text-xs font-medium text-indigo-400 hover:text-indigo-300 flex items-center gap-1 transition"
+            className="text-xs font-mono text-zinc-300 hover:text-white flex items-center gap-1 transition"
           >
             <span>Sessions ({course.sessions.length})</span>
             <ChevronRight className="w-3.5 h-3.5" />
           </button>
         </div>
 
-        {/* Embedded Interactive What-If Steppers */}
+        {/* Embedded What-If Steppers in B&W */}
         {showSim && (
-          <div className="mt-3 p-3 rounded-xl bg-slate-900/90 border border-slate-800 space-y-2.5 animate-in fade-in">
+          <div className="mt-3 p-3 rounded-lg bg-zinc-950 border border-zinc-800 space-y-2 text-xs">
             {/* Stepper 1: Extra DLs approved */}
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-slate-300">Duty Leaves Approved:</span>
+            <div className="flex items-center justify-between">
+              <span className="text-zinc-400">Duty Leaves Approved:</span>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => setSimParams((p) => ({ ...p, extraDL: Math.max(0, p.extraDL - 1) }))}
                   disabled={simParams.extraDL === 0}
-                  className="w-6 h-6 rounded bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-slate-200 flex items-center justify-center font-bold"
+                  className="w-5 h-5 rounded border border-zinc-700 bg-zinc-900 disabled:opacity-30 text-white flex items-center justify-center font-bold"
                 >
                   <Minus className="w-3 h-3" />
                 </button>
-                <span className="w-6 text-center font-mono font-bold text-indigo-300">
+                <span className="w-6 text-center font-mono font-bold text-white">
                   {simParams.extraDL}
                 </span>
                 <button
                   type="button"
                   onClick={() => setSimParams((p) => ({ ...p, extraDL: Math.min(course.absent, p.extraDL + 1) }))}
                   disabled={simParams.extraDL >= course.absent}
-                  className="w-6 h-6 rounded bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-slate-200 flex items-center justify-center font-bold"
+                  className="w-5 h-5 rounded border border-zinc-700 bg-zinc-900 disabled:opacity-30 text-white flex items-center justify-center font-bold"
                 >
                   <Plus className="w-3 h-3" />
                 </button>
@@ -236,24 +202,24 @@ export const CourseCard: React.FC<CourseCardProps> = ({
             </div>
 
             {/* Stepper 2: Extra Classes Attended */}
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-slate-300">Next Classes Attended:</span>
+            <div className="flex items-center justify-between">
+              <span className="text-zinc-400">Next Classes Attended:</span>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => setSimParams((p) => ({ ...p, extraAttend: Math.max(0, p.extraAttend - 1) }))}
                   disabled={simParams.extraAttend === 0}
-                  className="w-6 h-6 rounded bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-slate-200 flex items-center justify-center font-bold"
+                  className="w-5 h-5 rounded border border-zinc-700 bg-zinc-900 disabled:opacity-30 text-white flex items-center justify-center font-bold"
                 >
                   <Minus className="w-3 h-3" />
                 </button>
-                <span className="w-6 text-center font-mono font-bold text-emerald-400">
+                <span className="w-6 text-center font-mono font-bold text-white">
                   +{simParams.extraAttend}
                 </span>
                 <button
                   type="button"
                   onClick={() => setSimParams((p) => ({ ...p, extraAttend: p.extraAttend + 1 }))}
-                  className="w-6 h-6 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 flex items-center justify-center font-bold"
+                  className="w-5 h-5 rounded border border-zinc-700 bg-zinc-900 text-white flex items-center justify-center font-bold"
                 >
                   <Plus className="w-3 h-3" />
                 </button>
@@ -261,24 +227,24 @@ export const CourseCard: React.FC<CourseCardProps> = ({
             </div>
 
             {/* Stepper 3: Extra Classes Missed */}
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-slate-300">Next Classes Missed:</span>
+            <div className="flex items-center justify-between">
+              <span className="text-zinc-400">Next Classes Missed:</span>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => setSimParams((p) => ({ ...p, extraBunk: Math.max(0, p.extraBunk - 1) }))}
                   disabled={simParams.extraBunk === 0}
-                  className="w-6 h-6 rounded bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-slate-200 flex items-center justify-center font-bold"
+                  className="w-5 h-5 rounded border border-zinc-700 bg-zinc-900 disabled:opacity-30 text-white flex items-center justify-center font-bold"
                 >
                   <Minus className="w-3 h-3" />
                 </button>
-                <span className="w-6 text-center font-mono font-bold text-rose-400">
+                <span className="w-6 text-center font-mono font-bold text-white">
                   +{simParams.extraBunk}
                 </span>
                 <button
                   type="button"
                   onClick={() => setSimParams((p) => ({ ...p, extraBunk: p.extraBunk + 1 }))}
-                  className="w-6 h-6 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 flex items-center justify-center font-bold"
+                  className="w-5 h-5 rounded border border-zinc-700 bg-zinc-900 text-white flex items-center justify-center font-bold"
                 >
                   <Plus className="w-3 h-3" />
                 </button>
@@ -286,10 +252,10 @@ export const CourseCard: React.FC<CourseCardProps> = ({
             </div>
 
             {hasSimulation && (
-              <div className="pt-1.5 border-t border-slate-800 text-[11px] text-slate-400 flex justify-between">
+              <div className="pt-2 border-t border-zinc-800 text-[11px] font-mono flex justify-between text-zinc-300">
                 <span>Result: {simResult.simulatedPercentage}%</span>
-                <span className={simResult.meetsTarget ? 'text-emerald-400 font-semibold' : 'text-rose-400 font-semibold'}>
-                  {simResult.meetsTarget ? 'Meets Target!' : 'Still in deficit'}
+                <span className={simResult.meetsTarget ? 'font-bold text-white' : 'text-zinc-500'}>
+                  {simResult.meetsTarget ? 'Meets Target!' : 'Under Target'}
                 </span>
               </div>
             )}

@@ -1,14 +1,16 @@
 import { CourseAttendance, CourseAnalysis, OverallSummary, PolicyMode, Session, SimulationParams, SimulationResult } from '../types/attendance';
 
-export const PRE_AUG_CUTOFF = '2026-08-01T00:00:00.000Z';
+export const DEFAULT_CUTOFF = '2026-08-01';
 
 /**
- * Checks if a session occurred before August 1, 2026
+ * Checks if a session occurred before a given cutoff date
  */
-export function isBeforeAugust(dateStr: string): boolean {
-  if (!dateStr) return false;
-  // Handles ISO strings "2026-07-30T00:00:00.000Z" or "2026-07-30"
-  return new Date(dateStr) < new Date('2026-08-01T00:00:00.000Z');
+export function isBeforeCutoff(dateStr: string, cutoffDate: string = DEFAULT_CUTOFF): boolean {
+  if (!dateStr || !cutoffDate) return false;
+  // Compare date portion YYYY-MM-DD
+  const sDate = dateStr.slice(0, 10);
+  const cDate = cutoffDate.slice(0, 10);
+  return sDate < cDate;
 }
 
 /**
@@ -34,70 +36,52 @@ export function inferCourseCategory(code: string, name: string): 'Core' | 'Theor
 }
 
 /**
- * Calculates raw or policy-adjusted course metrics
+ * Calculates course metrics factoring in internship leave exemption & cutoff date
  */
 export function analyzeCourse(
   course: CourseAttendance,
-  policy: PolicyMode,
+  internshipEnabled: boolean,
+  cutoffDate: string = DEFAULT_CUTOFF,
+  policy: PolicyMode = 'scenario2',
   targetPercentage: number = 80
 ): CourseAnalysis {
   const targetFraction = targetPercentage / 100;
   const sessions = course.sessions || [];
 
-  // Categorize sessions
-  let preAugHeld = 0;
-  let preAugAbsent = 0;
-  let preAugPresent = 0;
-  let preAugDL = 0;
+  let preCutoffHeld = 0;
+  let preCutoffAbsent = 0;
+  let preCutoffPresent = 0;
+  let preCutoffDL = 0;
 
-  let postAugHeld = 0;
-  let postAugAbsent = 0;
-  let postAugPresent = 0;
-  let postAugDL = 0;
+  let postCutoffHeld = 0;
+  let postCutoffAbsent = 0;
+  let postCutoffPresent = 0;
+  let postCutoffDL = 0;
 
   sessions.forEach((s) => {
-    const isPre = isBeforeAugust(s.date);
-    const status = s.status ? s.status.toLowerCase() : 'present';
+    const isPre = isBeforeCutoff(s.date, cutoffDate);
+    const status = (s.status || '').toLowerCase();
 
     if (isPre) {
-      preAugHeld++;
-      if (status === 'absent') preAugAbsent++;
-      else if (status === 'duty_leave' || status === 'dl') preAugDL++;
-      else preAugPresent++;
+      preCutoffHeld++;
+      if (status === 'absent') preCutoffAbsent++;
+      else if (status === 'duty_leave' || status === 'dl') preCutoffDL++;
+      else preCutoffPresent++;
     } else {
-      postAugHeld++;
-      if (status === 'absent') postAugAbsent++;
-      else if (status === 'duty_leave' || status === 'dl') postAugDL++;
-      else postAugPresent++;
+      postCutoffHeld++;
+      if (status === 'absent') postCutoffAbsent++;
+      else if (status === 'duty_leave' || status === 'dl') postCutoffDL++;
+      else postCutoffPresent++;
     }
   });
 
-  // Total session statistics
-  const totalSessionsCount = sessions.length;
-  const totalHeld = course.totalHeld || totalSessionsCount;
-  const rawPresent = course.present ?? (preAugPresent + postAugPresent);
-  const rawDL = course.creditedDL ?? (preAugDL + postAugDL);
-  const rawAbsent = course.absent ?? (preAugAbsent + postAugAbsent);
+  const totalHeld = course.totalHeld || sessions.length;
+  const rawPresent = course.present ?? (preCutoffPresent + postCutoffPresent);
+  const rawDL = course.creditedDL ?? (preCutoffDL + postCutoffDL);
+  const rawAbsent = course.absent ?? (preCutoffAbsent + postCutoffAbsent);
   const rawCounted = Math.max(1, totalHeld - rawDL);
   const rawPercentage = (rawPresent / rawCounted) * 100;
 
-  // Scenario 1: Pre-August as Present
-  // All sessions held prior to Aug 1 granted full attendance (added to numerator, denominator unchanged)
-  const scen1Present = rawPresent + preAugAbsent;
-  const scen1Counted = rawCounted;
-  const scenario1Percentage = Math.min(100, (scen1Present / scen1Counted) * 100);
-
-  // Scenario 2: Pre-August as Duty Leave
-  // All sessions held prior to Aug 1 converted to Duty Leaves (subtracted entirely from denominator)
-  // Pre-August sessions are removed from counted sessions.
-  // Counted = totalHeld - (rawDL + preAugAbsent + preAugPresent)
-  // Attended = postAugPresent
-  const scen2DL = rawDL + preAugHeld;
-  const scen2Counted = Math.max(1, totalHeld - scen2DL);
-  const scen2Present = postAugPresent;
-  const scenario2Percentage = Math.min(100, (scen2Present / scen2Counted) * 100);
-
-  // Select active values based on policy
   let held = totalHeld;
   let dutyLeaves = rawDL;
   let counted = rawCounted;
@@ -105,31 +89,33 @@ export function analyzeCourse(
   let absent = rawAbsent;
   let percentage = rawPercentage;
 
-  if (policy === 'scenario1') {
-    attended = scen1Present;
-    counted = scen1Counted;
-    percentage = scenario1Percentage;
-    absent = Math.max(0, counted - attended);
-  } else if (policy === 'scenario2') {
-    dutyLeaves = scen2DL;
-    attended = scen2Present;
-    counted = scen2Counted;
-    percentage = scenario2Percentage;
-    absent = Math.max(0, counted - attended);
+  if (internshipEnabled) {
+    if (policy === 'scenario1') {
+      // Pre-cutoff granted as present
+      attended = rawPresent + preCutoffAbsent;
+      counted = rawCounted;
+      percentage = Math.min(100, (attended / counted) * 100);
+      absent = Math.max(0, counted - attended);
+    } else {
+      // Scenario 2 (default): Pre-cutoff excused as Duty Leaves (subtracted from denominator)
+      dutyLeaves = rawDL + preCutoffHeld;
+      counted = Math.max(1, totalHeld - dutyLeaves);
+      attended = postCutoffPresent;
+      percentage = Math.min(100, (attended / counted) * 100);
+      absent = Math.max(0, counted - attended);
+    }
   }
 
-  // Deficit and Buffer calculations
+  // Deficit (DL needed) & Buffer (Safe bunks)
   let dlNeeded = 0;
   let safeBunks = 0;
   let classesToAttend = 0;
 
   if (percentage < targetPercentage) {
-    // Formula: DL Needed = ceil(Counted - (Attended / Target))
+    // DL Needed = ceil(Counted - (Attended / Target))
     const rawDlNeeded = Math.ceil(counted - (attended / targetFraction));
     dlNeeded = Math.max(0, Math.min(absent, rawDlNeeded));
 
-    // Consecutive classes to attend to reach target:
-    // (Attended + C) / (Counted + C) >= T => C = ceil((T*Counted - Attended) / (1 - T))
     if (targetFraction < 1) {
       const neededClasses = Math.ceil((targetFraction * counted - attended) / (1 - targetFraction));
       classesToAttend = Math.max(0, neededClasses);
@@ -137,12 +123,11 @@ export function analyzeCourse(
       classesToAttend = absent;
     }
   } else {
-    // Formula: Safe Bunks = floor((Attended / Target) - Counted)
+    // Safe Bunks = floor((Attended / Target) - Counted)
     const rawSafeBunks = Math.floor((attended / targetFraction) - counted);
     safeBunks = Math.max(0, rawSafeBunks);
   }
 
-  // Status badge logic
   let status: 'critical' | 'warning' | 'healthy' = 'healthy';
   if (percentage < 75) {
     status = 'critical';
@@ -165,10 +150,9 @@ export function analyzeCourse(
     absent,
     percentage: Number(percentage.toFixed(2)),
     rawPercentage: Number(rawPercentage.toFixed(2)),
-    scenario1Percentage: Number(scenario1Percentage.toFixed(2)),
-    scenario2Percentage: Number(scenario2Percentage.toFixed(2)),
-    preAugHeld,
-    preAugAbsent,
+    adjustedPercentage: Number(percentage.toFixed(2)),
+    internshipSessions: preCutoffHeld,
+    internshipAbsent: preCutoffAbsent,
     status,
     dlNeeded,
     classesToAttend,
@@ -178,64 +162,45 @@ export function analyzeCourse(
 }
 
 /**
- * Computes global overall statistics across all courses
+ * Global Summary without overall attendance
  */
 export function calculateOverallSummary(
   courses: CourseAttendance[],
-  policy: PolicyMode,
+  internshipEnabled: boolean,
+  cutoffDate: string = DEFAULT_CUTOFF,
+  policy: PolicyMode = 'scenario2',
   targetPercentage: number = 80
 ): OverallSummary {
-  const analyzedCourses = courses.map((c) => analyzeCourse(c, policy, targetPercentage));
-  const rawCourses = courses.map((c) => analyzeCourse(c, 'raw', targetPercentage));
+  const analyzedCourses = courses.map((c) =>
+    analyzeCourse(c, internshipEnabled, cutoffDate, policy, targetPercentage)
+  );
 
-  let totalAttended = 0;
-  let totalCounted = 0;
-  let totalHeld = 0;
-  let totalDL = 0;
   let criticalCoursesCount = 0;
   let warningCoursesCount = 0;
   let healthyCoursesCount = 0;
   let totalDLNeeded = 0;
   let totalSafeBunks = 0;
+  let totalInternshipLeavesGranted = 0;
 
   analyzedCourses.forEach((c) => {
-    totalAttended += c.attended;
-    totalCounted += c.counted;
-    totalHeld += c.held;
-    totalDL += c.dutyLeaves;
-
     if (c.status === 'critical') criticalCoursesCount++;
     else if (c.status === 'warning') warningCoursesCount++;
     else healthyCoursesCount++;
 
     totalDLNeeded += c.dlNeeded;
     totalSafeBunks += c.safeBunks;
+    if (internshipEnabled) {
+      totalInternshipLeavesGranted += c.internshipSessions;
+    }
   });
-
-  const overallPercentage = totalCounted > 0 ? (totalAttended / totalCounted) * 100 : 0;
-
-  let rawTotalAttended = 0;
-  let rawTotalCounted = 0;
-  rawCourses.forEach((c) => {
-    rawTotalAttended += c.attended;
-    rawTotalCounted += c.counted;
-  });
-  const baselinePercentage = rawTotalCounted > 0 ? (rawTotalAttended / rawTotalCounted) * 100 : 0;
-  const scenarioGain = overallPercentage - baselinePercentage;
 
   return {
-    totalAttended,
-    totalCounted,
-    totalHeld,
-    totalDL,
-    overallPercentage: Number(overallPercentage.toFixed(2)),
     criticalCoursesCount,
     warningCoursesCount,
     healthyCoursesCount,
     totalDLNeeded,
     totalSafeBunks,
-    baselinePercentage: Number(baselinePercentage.toFixed(2)),
-    scenarioGain: Number(scenarioGain.toFixed(2)),
+    totalInternshipLeavesGranted,
   };
 }
 
@@ -253,7 +218,6 @@ export function simulateCourseAttendance(
   const extraBunk = Math.max(0, params.extraBunk);
 
   const simulatedAttended = courseAnalysis.attended + extraAttend;
-  // DL reduces counted; new classes (attended or bunked) increase counted
   const simulatedCounted = Math.max(1, courseAnalysis.counted - extraDL + extraAttend + extraBunk);
   const simulatedHeld = courseAnalysis.held + extraAttend + extraBunk;
   const simulatedDL = courseAnalysis.dutyLeaves + extraDL;

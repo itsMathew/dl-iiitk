@@ -8,13 +8,12 @@ A production-ready React (TypeScript + Tailwind CSS + Lucide Icons) attendance p
 
 ### 1. Direct College Portal Authentication & Session Sync
 - **Live Portal Login:** Enter your college email (`@iiitkottayam.ac.in`) and password. Authenticates directly against `https://attendance.iiitkottayam.ac.in/api/auth/login` and proxies requests seamlessly via Vite to bypass browser CORS restrictions.
-- **One-Click Demo Mode:** Instant access preloaded with real, verified 8-course session data (Mathew George Manachery, Roll No: `2024BCS0080`, CSE Semester 5).
-- **Direct JWT Token Entry:** Paste active Bearer token directly from DevTools for session debugging.
+- **Direct JWT Token Entry:** Option to paste an active Bearer token directly from DevTools for session debugging.
 - **Console Scraper & JSON Tools:** Built-in copyable browser console snippet that traverses all courses via background `fetch` and outputs complete JSON payloads.
 
 ---
 
-### 2. College Business Rules & Pre-August 2026 Policies
+### 2. Internship Leaves & College Attendance Rules
 
 The college attendance system follows specific administrative rules:
 $$\text{Attendance \%} = \left(\frac{\text{Attended Sessions}}{\text{Counted Sessions}}\right) \times 100$$
@@ -22,11 +21,9 @@ $$\text{Counted Sessions} = \text{Held Sessions} - \text{Duty Leaves}$$
 
 > **Note on Duty Leaves (DL):** A Duty Leave is an excused absence completely removed from the denominator (`Counted Sessions = Held - DL`). It does NOT count as attended; instead, it reduces the denominator, elevating attendance.
 
-#### Pre-Semester Cutoff Policies:
-Classes held prior to **August 1, 2026** can be toggled in real-time across three views:
-1. **Raw Portal Baseline:** Unadjusted baseline directly from portal records.
-2. **Scenario 1 (Pre-Aug as Present):** All sessions held prior to 1 Aug 2026 are granted full attendance (added to numerator/attended, denominator unchanged).
-3. **Scenario 2 (Pre-Aug as Duty Leave):** All sessions held prior to 1 Aug 2026 are converted to Duty Leaves (subtracted entirely from denominator `Counted Sessions`).
+#### Internship Leaves & Cutoff Policy:
+- **Internship Leaves Toggle:** Toggle to excuse pre-semester sessions held during internship.
+- **Configurable Cutoff Date:** Select any cutoff date (defaulting to **1 August 2026**). All sessions held prior to this date are automatically excused as Duty Leaves from the denominator.
 
 ---
 
@@ -44,13 +41,9 @@ For any configurable target attendance threshold $T$ (default: **80%**):
 ---
 
 ### 4. Interactive Tools & Views
-- **Global Summary Cards:** Overall average attendance, courses under target, total DLs needed across lagging subjects, and total safe bunk hours available.
-- **Course Breakdown (Grid & Dense Table Views):** Visual color-coded progress bars (Red `< 75%`, Amber `75%–79.9%`, Emerald `≥ 80%`), category tags, and actionable badges (`Needs 2 DLs`, `Safe to skip 3 classes`).
-- **Course Detail Drawer:** Comprehensive session history timeline with filters (All, Present, Absent, Pre-Aug), timing, topics, and side-by-side scenario comparison table with mathematical proofs.
-- **Live What-If Simulator:** Interactive steppers to test hypotheses:
-  - *"If I get $X$ duty leaves approved..."*
-  - *"If I attend the next $N$ classes..."*
-  - *"If I miss the next $M$ classes..."*
+- **Summary Cards:** Courses under target ($< 80\%$), total DLs needed across lagging subjects, and total safe bunk hours available.
+- **Course Breakdown (Grid & Dense Table Views):** Visual monochrome progress bars, category tags, and actionable badges (`Needs 2 DLs`, `Safe to skip 3 classes`).
+- **Course Detail Drawer:** Comprehensive session history timeline with filters (All, Present, Absent, Internship), timing, topics, and simulation steppers.
 - **Formal Duty Leave Application Generator:** Auto-generates formal leave application letters tailored with course deficit breakdown ready to print or copy for Faculty Advisors / HoDs.
 
 ---
@@ -58,9 +51,8 @@ For any configurable target attendance threshold $T$ (default: **80%**):
 ## 🛠 Tech Stack
 
 - **Framework:** React 19 + TypeScript + Vite 8
-- **Styling:** Tailwind CSS v4 (with `@tailwindcss/vite` and glassmorphic styling)
+- **Styling:** Tailwind CSS v4 (Pure Monochrome Black & White)
 - **Icons:** Lucide React
-- **Animations & Effects:** Canvas Confetti
 
 ---
 

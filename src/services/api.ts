@@ -1,5 +1,4 @@
 import { CourseAttendance, Session, StudentProfile } from '../types/attendance';
-import { mockCourses, mockStudentProfile } from '../data/mockData';
 
 export interface LoginResponse {
   access: string;
@@ -65,26 +64,12 @@ export interface CourseSessionsResponse {
   }>;
 }
 
-// Automatically detect whether we should use relative /api (vite proxy) or direct URL
 const BASE_URL = '/api';
 
 /**
  * Authenticate against the IIIT Kottayam portal
  */
 export async function loginToPortal(email: string, password: string): Promise<LoginResponse> {
-  // If user enters the Mathew demo account or clicks demo, return instantaneous mock credentials
-  if (email.trim().toLowerCase() === 'demo' || email.trim().toLowerCase() === 'demo@iiitkottayam.ac.in') {
-    return {
-      access: 'mock-jwt-token-demo',
-      refresh: 'mock-refresh-token',
-      user: {
-        id: mockStudentProfile.id,
-        email: mockStudentProfile.email || 'mathewmanachery24bcs80@iiitkottayam.ac.in',
-        role: 'STUDENT',
-      },
-    };
-  }
-
   try {
     const res = await fetch(`${BASE_URL}/auth/login`, {
       method: 'POST',
@@ -114,10 +99,9 @@ export async function loginToPortal(email: string, password: string): Promise<Lo
     }
     return data;
   } catch (error: any) {
-    // If CORS error occurred or network failed
     if (error.name === 'TypeError' && error.message.includes('fetch')) {
       throw new Error(
-        'Network/CORS connection issue reaching the portal. Ensure Vite proxy is active on port 5173, or use Demo Mode.'
+        'Network error reaching the portal. Ensure you have network connectivity to the attendance server.'
       );
     }
     throw error;
@@ -128,25 +112,6 @@ export async function loginToPortal(email: string, password: string): Promise<Lo
  * Fetch student overview attendance
  */
 export async function fetchAttendanceOverview(token: string): Promise<AttendanceRawResponse> {
-  if (token === 'mock-jwt-token-demo') {
-    return {
-      student: mockStudentProfile,
-      overall: [
-        { status: 'PRESENT', count: 193 },
-        { status: 'ABSENT', count: 58 },
-      ],
-      byCourse: mockCourses.map((c) => ({
-        courseId: c.courseId,
-        courseCode: c.courseCode,
-        courseName: c.courseName,
-        total: c.totalHeld,
-        present: c.present,
-        dlCredited: c.creditedDL,
-        percentage: Number(((c.present / Math.max(1, c.totalHeld - c.creditedDL)) * 100).toFixed(2)),
-      })),
-    };
-  }
-
   const res = await fetch(`${BASE_URL}/students/me/attendance`, {
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -165,27 +130,6 @@ export async function fetchAttendanceOverview(token: string): Promise<Attendance
  * Fetch sessions list for a specific course
  */
 export async function fetchCourseSessions(token: string, courseId: string): Promise<CourseSessionsResponse> {
-  if (token === 'mock-jwt-token-demo') {
-    const course = mockCourses.find((c) => c.courseId === courseId) || mockCourses[0];
-    return {
-      course: { id: course.courseId, code: course.courseCode, name: course.courseName },
-      faculty: course.faculty ? [{ name: course.faculty, employeeId: 'faculty' }] : [],
-      total: course.totalHeld,
-      present: course.present,
-      dlCredited: course.creditedDL,
-      percentage: Number(((course.present / Math.max(1, course.totalHeld - course.creditedDL)) * 100).toFixed(2)),
-      sessions: course.sessions.map((s) => ({
-        sessionId: s.id,
-        date: s.date,
-        startTime: s.timing.split(' - ')[0] || '09:30',
-        endTime: s.timing.split(' - ')[1] || '10:30',
-        topic: s.topic || null,
-        section: s.section || 'B1',
-        status: s.status.toUpperCase(),
-      })),
-    };
-  }
-
   const res = await fetch(`${BASE_URL}/students/me/courses/${courseId}/sessions`, {
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -202,10 +146,9 @@ export async function fetchCourseSessions(token: string, courseId: string): Prom
 
 /**
  * Orchestrates full student sync:
- * 1. Log in / check token
- * 2. Fetch student info and all courses
- * 3. Fetch session timelines for all courses
- * 4. Transform into clean structured CourseAttendance objects
+ * 1. Fetch student info and all courses
+ * 2. Fetch session rosters for all courses
+ * 3. Transform into clean structured CourseAttendance objects
  */
 export async function syncFullStudentData(
   token: string,
@@ -275,7 +218,6 @@ export async function syncFullStudentData(
       });
     } catch (err) {
       console.warn(`Could not load sessions for ${c.courseCode}:`, err);
-      // Fallback with aggregate counts
       const countedSessions = Math.max(1, c.total - (c.dlCredited || 0));
       courses.push({
         courseId: c.courseId,
