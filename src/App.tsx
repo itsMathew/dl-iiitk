@@ -182,11 +182,11 @@ export const App: React.FC = () => {
               onClick={() => setFilterCriticalOnly(!filterCriticalOnly)}
               className={`py-1.5 px-2.5 rounded-lg text-xs font-mono border transition flex items-center gap-1.5 ${
                 filterCriticalOnly
-                  ? 'bg-white text-black font-bold border-white'
+                  ? 'bg-red-950/40 text-red-400 font-bold border-red-500/70'
                   : 'bg-black text-zinc-400 border-zinc-800 hover:text-white'
               }`}
             >
-              <AlertTriangle className="w-3.5 h-3.5" />
+              <AlertTriangle className={`w-3.5 h-3.5 ${filterCriticalOnly ? 'text-red-400' : 'text-zinc-400'}`} />
               <span>&lt; {targetAttendance}% Only</span>
             </button>
 

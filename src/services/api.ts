@@ -64,7 +64,7 @@ export interface CourseSessionsResponse {
   }>;
 }
 
-const BASE_URL = '/api';
+export const BASE_URL = 'https://attendance.iiitkottayam.ac.in/api';
 
 /**
  * Authenticate against the IIIT Kottayam portal

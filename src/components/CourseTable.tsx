@@ -3,7 +3,7 @@ import {
   ChevronRight, 
   ShieldAlert, 
   Coffee, 
-  User,
+  User, 
   Briefcase
 } from 'lucide-react';
 import { CourseAnalysis } from '../types/attendance';
@@ -39,19 +39,19 @@ export const CourseTable: React.FC<CourseTableProps> = ({
           </thead>
           <tbody className="divide-y divide-zinc-850 font-medium">
             {courses.map((course) => {
-              const isHealthy = course.percentage >= targetAttendance;
+              const isBelowTarget = course.percentage < targetAttendance;
 
               return (
                 <tr 
                   key={course.courseId} 
-                  className="hover:bg-zinc-900/60 transition cursor-pointer"
+                  className={`hover:bg-zinc-900/60 transition cursor-pointer ${isBelowTarget ? 'bg-red-950/10' : ''}`}
                   onClick={() => onOpenDrawer(course)}
                 >
                   {/* Course Details */}
                   <td className="py-3 px-4">
                     <div className="flex flex-col">
                       <div className="flex items-center gap-2">
-                        <span className="font-mono text-xs font-bold text-white">
+                        <span className={`font-mono text-xs font-bold ${isBelowTarget ? 'text-red-400' : 'text-white'}`}>
                           {course.courseCode}
                         </span>
                       </div>
@@ -89,15 +89,15 @@ export const CourseTable: React.FC<CourseTableProps> = ({
                     <span className="font-bold text-white">{course.attended}</span> / {course.counted}
                   </td>
 
-                  {/* Attendance Percentage & Mini Progress Bar */}
+                  {/* Attendance Percentage & Mini Progress Bar (Red if below target) */}
                   <td className="py-3 px-4">
                     <div className="flex items-center gap-2">
-                      <span className={`font-mono font-bold text-sm ${!isHealthy ? 'text-white underline decoration-zinc-500' : 'text-zinc-200'}`}>
+                      <span className={`font-mono font-bold text-sm ${isBelowTarget ? 'text-red-500' : 'text-zinc-200'}`}>
                         {course.percentage}%
                       </span>
                       <div className="w-16 bg-zinc-900 border border-zinc-800 rounded-full h-1.5 overflow-hidden hidden sm:block">
                         <div
-                          className="h-full rounded-full bg-white"
+                          className={`h-full rounded-full transition-all duration-300 ${isBelowTarget ? 'bg-red-500' : 'bg-white'}`}
                           style={{ width: `${Math.min(100, course.percentage)}%` }}
                         />
                       </div>
@@ -106,13 +106,13 @@ export const CourseTable: React.FC<CourseTableProps> = ({
 
                   {/* Status & Recommendation */}
                   <td className="py-3 px-4">
-                    {!isHealthy ? (
+                    {isBelowTarget ? (
                       <div className="flex flex-col gap-0.5">
-                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-mono font-bold border border-white text-white bg-black w-fit">
-                          <ShieldAlert className="w-3 h-3 text-white" />
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-mono font-bold border border-red-500/70 text-red-400 bg-red-950/40 w-fit">
+                          <ShieldAlert className="w-3 h-3 text-red-400" />
                           Needs {course.dlNeeded} DL{course.dlNeeded !== 1 ? 's' : ''}
                         </span>
-                        <span className="text-[10px] font-mono text-zinc-500">
+                        <span className="text-[10px] font-mono text-red-400/80">
                           or attend next {course.classesToAttend}
                         </span>
                       </div>

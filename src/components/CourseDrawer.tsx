@@ -12,7 +12,7 @@ import {
   Minus,
   Briefcase
 } from 'lucide-react';
-import { CourseAnalysis, PolicyMode, Session, SimulationParams } from '../types/attendance';
+import { CourseAnalysis, SimulationParams } from '../types/attendance';
 import { isBeforeCutoff, simulateCourseAttendance } from '../utils/calculations';
 
 interface CourseDrawerProps {
@@ -43,6 +43,7 @@ export const CourseDrawer: React.FC<CourseDrawerProps> = ({
 
   const simResult = simulateCourseAttendance(course, simParams, targetAttendance);
   const hasSimulation = simParams.extraDL > 0 || simParams.extraAttend > 0 || simParams.extraBunk > 0;
+  const isBelowTarget = course.percentage < targetAttendance;
 
   const filteredSessions = (course.sessions || []).filter((s) => {
     const isInternship = isBeforeCutoff(s.date, internshipCutoffDate);
@@ -64,7 +65,9 @@ export const CourseDrawer: React.FC<CourseDrawerProps> = ({
         <div className="p-5 border-b border-zinc-800 bg-zinc-950 flex items-start justify-between">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <span className="font-mono text-xs font-bold px-1.5 py-0.5 rounded bg-white text-black">
+              <span className={`font-mono text-xs font-bold px-1.5 py-0.5 rounded ${
+                isBelowTarget ? 'bg-zinc-900 border border-red-800/60 text-red-400' : 'bg-white text-black'
+              }`}>
                 {course.courseCode}
               </span>
               <span className="text-[11px] font-mono px-1.5 py-0.5 rounded border border-zinc-800 text-zinc-400">
@@ -134,13 +137,27 @@ export const CourseDrawer: React.FC<CourseDrawerProps> = ({
                   <div className="text-[10px] font-mono text-zinc-500 uppercase">Attended</div>
                   <div className="text-base font-mono font-bold text-white">{course.attended}</div>
                 </div>
-                <div className="p-2.5 rounded border border-zinc-800 bg-zinc-950">
-                  <div className="text-[10px] font-mono text-zinc-500 uppercase">Absent</div>
-                  <div className="text-base font-mono font-bold text-white">{course.absent}</div>
+                {/* Absents box in red if absents exist */}
+                <div className={`p-2.5 rounded border ${
+                  course.absent > 0 ? 'border-red-900/60 bg-red-950/20' : 'border-zinc-800 bg-zinc-950'
+                }`}>
+                  <div className={`text-[10px] font-mono uppercase ${course.absent > 0 ? 'text-red-400 font-bold' : 'text-zinc-500'}`}>
+                    Absent
+                  </div>
+                  <div className={`text-base font-mono font-bold ${course.absent > 0 ? 'text-red-400' : 'text-white'}`}>
+                    {course.absent}
+                  </div>
                 </div>
-                <div className="p-2.5 rounded border border-zinc-800 bg-zinc-950">
-                  <div className="text-[10px] font-mono text-zinc-500 uppercase">Current %</div>
-                  <div className="text-base font-mono font-bold text-white">{course.percentage}%</div>
+                {/* Current % in red if below target */}
+                <div className={`p-2.5 rounded border ${
+                  isBelowTarget ? 'border-red-900/60 bg-red-950/20' : 'border-zinc-800 bg-zinc-950'
+                }`}>
+                  <div className={`text-[10px] font-mono uppercase ${isBelowTarget ? 'text-red-400 font-bold' : 'text-zinc-500'}`}>
+                    Current %
+                  </div>
+                  <div className={`text-base font-mono font-bold ${isBelowTarget ? 'text-red-500' : 'text-white'}`}>
+                    {course.percentage}%
+                  </div>
                 </div>
               </div>
 
@@ -167,7 +184,7 @@ export const CourseDrawer: React.FC<CourseDrawerProps> = ({
                       onClick={() => setSessionFilter(f)}
                       className={`px-2 py-0.5 rounded text-[11px] font-mono transition capitalize ${
                         sessionFilter === f
-                          ? 'bg-white text-black font-bold'
+                          ? f === 'absent' ? 'bg-red-500 text-white font-bold' : 'bg-white text-black font-bold'
                           : 'text-zinc-400 hover:text-white border border-zinc-800'
                       }`}
                     >
@@ -202,7 +219,11 @@ export const CourseDrawer: React.FC<CourseDrawerProps> = ({
                     return (
                       <div
                         key={session.id || idx}
-                        className="p-2.5 rounded border border-zinc-850 bg-zinc-950 flex items-center justify-between text-xs"
+                        className={`p-2.5 rounded border flex items-center justify-between text-xs transition ${
+                          !isPres && !isDL 
+                            ? 'border-red-950/60 bg-red-950/10' 
+                            : 'border-zinc-850 bg-zinc-950'
+                        }`}
                       >
                         <div className="space-y-0.5">
                           <div className="flex items-center gap-2">
@@ -231,7 +252,7 @@ export const CourseDrawer: React.FC<CourseDrawerProps> = ({
                           </div>
                         </div>
 
-                        {/* Status Badge in B&W */}
+                        {/* Status Badge (Red for Absent) */}
                         <div className="shrink-0 ml-2">
                           {isPres ? (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded border border-zinc-700 text-zinc-300 font-mono text-[11px]">
@@ -243,8 +264,8 @@ export const CourseDrawer: React.FC<CourseDrawerProps> = ({
                               Duty Leave
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded border border-white text-white font-mono text-[11px] font-bold">
-                              <XCircle className="w-3 h-3 text-white" />
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded border border-red-500/80 text-red-400 bg-red-950/40 font-mono text-[11px] font-bold">
+                              <XCircle className="w-3 h-3 text-red-400" />
                               Absent
                             </span>
                           )}
@@ -274,12 +295,14 @@ export const CourseDrawer: React.FC<CourseDrawerProps> = ({
               <div className="p-3 rounded border border-zinc-800 bg-black flex items-center justify-between">
                 <div>
                   <div className="text-[11px] font-mono text-zinc-500">Projected Attendance</div>
-                  <div className="text-2xl font-mono font-bold text-white">
+                  <div className={`text-2xl font-mono font-bold ${simResult.meetsTarget ? 'text-white' : 'text-red-500'}`}>
                     {simResult.simulatedPercentage}%
                   </div>
                 </div>
                 <div className="text-right">
-                  <span className="text-xs font-mono px-2 py-0.5 rounded border border-zinc-700 text-white">
+                  <span className={`text-xs font-mono px-2 py-0.5 rounded border ${
+                    simResult.meetsTarget ? 'border-zinc-700 text-white' : 'border-red-500/70 text-red-400 bg-red-950/30 font-bold'
+                  }`}>
                     {simResult.meetsTarget ? `Safe Buffer: ${simResult.newSafeBunks}` : `Deficit: ${simResult.newDLNeeded} DLs`}
                   </span>
                 </div>
@@ -319,7 +342,7 @@ export const CourseDrawer: React.FC<CourseDrawerProps> = ({
                 <div>
                   <div className="flex justify-between font-mono mb-1">
                     <span className="text-zinc-400">Upcoming Bunked Classes:</span>
-                    <span className="font-bold text-white">+{simParams.extraBunk}</span>
+                    <span className="font-bold text-red-400">+{simParams.extraBunk}</span>
                   </div>
                   <input
                     type="range"

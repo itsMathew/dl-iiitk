@@ -38,6 +38,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({
 
   const activePercentage = hasSimulation ? simResult.simulatedPercentage : course.percentage;
   const isBelowTarget = activePercentage < targetAttendance;
+  const isCritical = activePercentage < 75;
 
   const resetSim = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -45,13 +46,19 @@ export const CourseCard: React.FC<CourseCardProps> = ({
   };
 
   return (
-    <div className={`mono-card rounded-xl p-5 border transition-all flex flex-col justify-between ${isBelowTarget ? 'border-zinc-700 bg-zinc-950/70' : 'border-zinc-850 bg-black'}`}>
+    <div className={`rounded-xl p-5 border transition-all flex flex-col justify-between ${
+      isBelowTarget 
+        ? 'bg-zinc-950/80 border-red-900/50 hover:border-red-700/60 shadow-sm shadow-red-950/20' 
+        : 'mono-card border-zinc-850 bg-black'
+    }`}>
       {/* Top Header */}
       <div>
         <div className="flex items-start justify-between gap-2 mb-2">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <span className="font-mono text-xs font-bold px-1.5 py-0.5 rounded bg-zinc-900 border border-zinc-700 text-white">
+              <span className={`font-mono text-xs font-bold px-1.5 py-0.5 rounded ${
+                isBelowTarget ? 'bg-zinc-900 border border-red-800/60 text-red-300' : 'bg-zinc-900 border border-zinc-700 text-white'
+              }`}>
                 {course.courseCode}
               </span>
               <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded border border-zinc-800 text-zinc-400">
@@ -89,7 +96,9 @@ export const CourseCard: React.FC<CourseCardProps> = ({
         <div className="my-4">
           <div className="flex items-baseline justify-between mb-1.5">
             <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-extrabold font-mono tracking-tight text-white">
+              <span className={`text-2xl font-extrabold font-mono tracking-tight ${
+                isBelowTarget ? 'text-red-500' : 'text-white'
+              }`}>
                 {activePercentage.toFixed(2)}%
               </span>
               {hasSimulation && (
@@ -103,13 +112,15 @@ export const CourseCard: React.FC<CourseCardProps> = ({
             </span>
           </div>
 
-          {/* Progress Bar in B&W */}
+          {/* Progress Bar (Red when below target, White when safe) */}
           <div className="relative w-full bg-zinc-900 border border-zinc-800 rounded-full h-2 overflow-hidden">
             <div
-              className="h-full rounded-full bg-white transition-all duration-300"
+              className={`h-full rounded-full transition-all duration-300 ${
+                isBelowTarget ? 'bg-red-500' : 'bg-white'
+              }`}
               style={{ width: `${Math.min(100, activePercentage)}%` }}
             />
-            {/* Visual target benchmark line */}
+            {/* Target benchmark line */}
             <div
               className="absolute top-0 bottom-0 w-0.5 bg-zinc-400 z-10"
               style={{ left: `${targetAttendance}%` }}
@@ -122,11 +133,11 @@ export const CourseCard: React.FC<CourseCardProps> = ({
         <div className="flex flex-wrap items-center gap-2 mb-4">
           {activePercentage < targetAttendance ? (
             <>
-              <div className="flex items-center gap-1.5 px-2 py-0.5 rounded border border-white bg-zinc-950 text-white text-xs font-mono font-bold">
-                <ShieldAlert className="w-3.5 h-3.5 text-white" />
+              <div className="flex items-center gap-1.5 px-2 py-0.5 rounded border border-red-500/70 bg-red-950/40 text-red-400 text-xs font-mono font-bold">
+                <ShieldAlert className="w-3.5 h-3.5 text-red-400" />
                 <span>Needs {hasSimulation ? simResult.newDLNeeded : course.dlNeeded} DL{ (hasSimulation ? simResult.newDLNeeded : course.dlNeeded) !== 1 ? 's' : '' }</span>
               </div>
-              <div className="flex items-center gap-1.5 px-2 py-0.5 rounded border border-zinc-800 text-zinc-400 text-xs font-mono">
+              <div className="flex items-center gap-1.5 px-2 py-0.5 rounded border border-red-900/40 bg-zinc-950 text-red-400/90 text-xs font-mono">
                 <span>Attend next {course.classesToAttend}</span>
               </div>
             </>
@@ -140,7 +151,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({
       </div>
 
       {/* Bottom Section: What-If Simulator & Timeline Trigger */}
-      <div className="border-t border-zinc-800 pt-3">
+      <div className="border-t border-zinc-800/80 pt-3">
         <div className="flex items-center justify-between">
           <button
             type="button"
@@ -172,7 +183,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({
           </button>
         </div>
 
-        {/* Embedded What-If Steppers in B&W */}
+        {/* Embedded What-If Steppers */}
         {showSim && (
           <div className="mt-3 p-3 rounded-lg bg-zinc-950 border border-zinc-800 space-y-2 text-xs">
             {/* Stepper 1: Extra DLs approved */}
@@ -238,7 +249,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({
                 >
                   <Minus className="w-3 h-3" />
                 </button>
-                <span className="w-6 text-center font-mono font-bold text-white">
+                <span className="w-6 text-center font-mono font-bold text-red-400">
                   +{simParams.extraBunk}
                 </span>
                 <button
@@ -252,9 +263,11 @@ export const CourseCard: React.FC<CourseCardProps> = ({
             </div>
 
             {hasSimulation && (
-              <div className="pt-2 border-t border-zinc-800 text-[11px] font-mono flex justify-between text-zinc-300">
-                <span>Result: {simResult.simulatedPercentage}%</span>
-                <span className={simResult.meetsTarget ? 'font-bold text-white' : 'text-zinc-500'}>
+              <div className="pt-2 border-t border-zinc-800 text-[11px] font-mono flex justify-between">
+                <span className={simResult.meetsTarget ? 'text-zinc-300' : 'text-red-400 font-bold'}>
+                  Result: {simResult.simulatedPercentage}%
+                </span>
+                <span className={simResult.meetsTarget ? 'font-bold text-white' : 'text-red-400 font-bold'}>
                   {simResult.meetsTarget ? 'Meets Target!' : 'Under Target'}
                 </span>
               </div>
